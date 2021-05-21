@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-import matplotlib.pyplot as plt
-from pandas.plotting import table
 import dataframe_image as dfi
 
 if __name__ == '__main__':
