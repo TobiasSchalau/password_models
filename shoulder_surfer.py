@@ -2,6 +2,26 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 import dataframe_image as dfi
+import six
+
+
+def level(p, alpha, beta):
+    return np.floor(0.5 - alpha * np.log(p)) - beta
+
+
+def sneaky_surfer(v, n=3):
+    """
+    :param v: first digit of the pin
+    :return: the n most likely PINs
+    """
+    rank = 1
+
+
+def calc_alpha_beta(ph, pl, l):
+    alpha = (1-l) / (np.floor(0.5-np.log(ph)) - np.floor(0.5-np.log(pl)))
+    beta = np.floor(0.5 - alpha * np.log(ph)) - 1
+    return alpha, beta
+
 
 if __name__ == '__main__':
     """
@@ -24,8 +44,15 @@ if __name__ == '__main__':
 
     digit_names = [f'Digit {i}' for i in range(10)]
     df = pd.DataFrame(transition_matrix, columns=digit_names, index=digit_names)
-    df_styled = df.style.background_gradient()
-    print(df_styled)
-    dfi.export(df_styled, 'df_styled.png')
-    df.dfi.export('df.png')
-    #df_styled.export_png('df_styled.png')
+
+    highest_prob = np.max(transition_matrix)
+    lowest_prob = np.min(transition_matrix)
+    l = 100
+
+    alpha, beta = calc_alpha_beta(highest_prob, lowest_prob, l)
+    print(alpha, beta)
+    #print(level(highest_prob, alpha,beta), level(lowest_prob, alpha, beta))
+    #print(level(0.25, alpha, beta))
+    #print(level(0.2, alpha, beta))
+    #print(level(0.05, alpha, beta))
+
