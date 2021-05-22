@@ -39,20 +39,25 @@ def level(p, alpha, beta):
 
 def sneaky_surfer(v, transition_matrix, l, pin_length, n=3):
     """
-    :param v: first digit of the pin
-    :return: the n most likely PINs
+    Calculate most likely PINs inspired by the algorithm of Dürmuth et al. (2015).
+    :param v: first observed digit.
+    :return: the n most likely PINs.
     """
 
     highest_prob = np.max(transition_matrix)
     lowest_prob = np.min(transition_matrix)
 
+    # alpha, beta are necessary to calculate the level of the probability
     alpha, beta = calc_alpha_beta(highest_prob, lowest_prob, l)
+
+    # apply the level function to each element in the transition matrix
     level_matrix = level(transition_matrix, alpha, beta)
-    print(level_matrix)
 
     rank = pin_length    # minimum possible rank is pin_length
     pins = []
-    while len(pins) < n:
+    while len(pins) < n:  # stop if we have the desired number of PINs
+
+        # get all compositions of rank with composition is equal to PIN length - 1
         combis = list(gen_combinations(pin_length-1, rank))
         for combi in combis:
             results = []
@@ -63,6 +68,15 @@ def sneaky_surfer(v, transition_matrix, l, pin_length, n=3):
 
 
 def traverse_tree(combi, path, level_matrix, results):
+    """
+    Iterate through the tree (markov model graph) from the start digit v until a path is found which matches the levels
+    of the composition combi.
+    :param combi: composition
+    :param path: possible PIN - growing through recursion
+    :param level_matrix: transformed transition matrix with level function
+    :param results: likely PINs
+    :return:
+    """
     if len(path) == (len(combi)+1):
         results.append(path)
         return
