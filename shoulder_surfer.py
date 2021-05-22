@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 import dataframe_image as dfi
-import multiprocessing as mp
 
 
 def gen_combinations(k, n):
