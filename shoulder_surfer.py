@@ -2,11 +2,12 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 import dataframe_image as dfi
-import six
+import multiprocessing as mp
 
 
 def gen_combinations(k, n):
     """
+    Generate all possible compositions.
     Imported from https://stackoverflow.com/questions/49200566/function-for-compositions-in-python
     """
     assert n > k > 1
@@ -31,10 +32,13 @@ def gen_combinations(k, n):
 
 
 def level(p, alpha, beta):
+    """
+    Calculate level for probability.
+    """
     return np.floor(0.5 - alpha * np.log(p)) - beta
 
 
-def sneaky_surfer(v, transition_matrix, l, n=3):
+def sneaky_surfer(v, transition_matrix, l, pin_length, n=3):
     """
     :param v: first digit of the pin
     :return: the n most likely PINs
@@ -45,26 +49,28 @@ def sneaky_surfer(v, transition_matrix, l, n=3):
 
     alpha, beta = calc_alpha_beta(highest_prob, lowest_prob, l)
     level_matrix = level(transition_matrix, alpha, beta)
+    print(level_matrix)
 
-    rank = 4
+    rank = pin_length    # minimum possible rank is pin_length
     pins = []
     while len(pins) < n:
-        combis = list(gen_combinations(3, rank))
+        combis = list(gen_combinations(pin_length-1, rank))
         for combi in combis:
-            result = traverse_tree(combi, [v], level_matrix)
-            if result is not None:
-                pins.append(result)
+            results = []
+            traverse_tree(combi, [v], level_matrix, results)
+            pins.extend(results)
         rank += 1
     return pins
 
 
-def traverse_tree(combi, path, level_matrix):
+def traverse_tree(combi, path, level_matrix, results):
     if len(path) == (len(combi)+1):
-        return path
+        results.append(path)
+        return
 
     for j, val in enumerate(level_matrix[path[-1]]):
         if val == combi[len(path)-1]:
-            return traverse_tree(combi, np.append(path, j), level_matrix)
+            traverse_tree(combi, np.append(path, j), level_matrix, results)
 
 
 def calc_alpha_beta(ph, pl, l):
@@ -73,36 +79,62 @@ def calc_alpha_beta(ph, pl, l):
     return alpha, beta
 
 
-if __name__ == '__main__':
+def print_matrix(m):
     """
-    Start with the 4-PIN dataset.
+    Export matrix as png with colored entries by its gradient.
+    :param m: Matrix
+    :return: void
     """
-    file = open("RockYou-4-digit.txt", 'r')
+    digit_names = [f'Digit {i}' for i in range(10)]
+    df = pd.DataFrame(m, columns=digit_names, index=digit_names)
+    df_styled = df.style.background_gradient()
+    dfi.export(df_styled, 'df_styled.png')
+    df.dfi.export('df.png')
+
+
+def generate_transition_matrix(four_digit=True):
+    """
+    Load either 4-PINs or 6-PINs dataset and create first order markov models on that basis.
+    :param four_digit: boolean
+    :return: transition matrix
+    """
+    filename = "RockYou-4-digit.txt" if four_digit else "RockYou-6-digit.txt"
+    file = open(filename, 'r')
     lines = file.readlines()
+
     transition_matrix = np.zeros((10, 10))
     for line in tqdm(lines):
         for j, digit in enumerate(line[:-2]):   # slice '\n' and last character
             # digit represents the current state and int(line[j+1]) the next state
             transition_matrix[int(digit)][int(line[j+1])] += 1
-    #print(transition_matrix)
 
     transition_matrix = transition_matrix / np.expand_dims(np.sum(transition_matrix, axis=1), axis=1)
-
-    #print(transition_matrix)
-
     assert np.all(np.isclose(np.ones(10), np.sum(transition_matrix, axis=1))), "Sum of rows should be 1.0!"
 
-    digit_names = [f'Digit {i}' for i in range(10)]
+    return transition_matrix
 
-    """
-    df = pd.DataFrame(transition_matrix, columns=digit_names, index=digit_names)
-    df_styled = df.style.background_gradient()
-    print(df_styled)
-    dfi.export(df_styled, 'df_styled.png')
-    df.dfi.export('df.png')
-    """
-    l = 100
 
-    pins = sneaky_surfer(2, transition_matrix, l)
+def print_pins(pins):
+    for pin in pins:
+        print(*pin, sep=' ')
 
-    print(pins)
+
+if __name__ == '__main__':
+    l = 100  # highest level representing the smallest transition probability
+    observed_pin = 2
+    n_likely_pins = 3
+
+    # Start with the 4-PIN dataset.
+    pin_length = 4
+    transition_matrix = generate_transition_matrix(four_digit=True)
+    pins = sneaky_surfer(observed_pin, transition_matrix, l, pin_length, n_likely_pins)
+    print('The most likely PINs are:')
+    print_pins(pins)
+
+    # Continue with the 6-PIN dataset.
+    pin_length = 6
+    transition_matrix = generate_transition_matrix(four_digit=False)
+    pins = sneaky_surfer(observed_pin, transition_matrix, l, pin_length, n_likely_pins)
+    print('The most likely PINs are:')
+    print_pins(pins)
+
